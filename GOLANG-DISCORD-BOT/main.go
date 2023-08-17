@@ -12,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/bwmarrin/discordgo"
@@ -157,21 +156,25 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		logger := log.New(os.Stderr, "*** ", log.LstdFlags)
 		api, _ := goforces.NewClient(logger)
 
-		var ratingChange1, _ = api.GetUserRating(ctx, user1)
-		var ratingChange2, _ = api.GetUserRating(ctx, user2)
-		var rating1 = ratingChange1[len(ratingChange1)-1].NewRating
-		var rating2 = ratingChange2[len(ratingChange2)-1].NewRating
-		var cota1, cota2 = cota(rating1, rating2)
-		cota1 += 1
-		cota2 += 1
-		if cota1 > 50100 {
-			cota1 = 50100
-		}
-		if cota2 > 50100 {
-			cota2 = 50100
-		}
+		var ratingChange1, err1 = api.GetUserRating(ctx, user1)
+		var ratingChange2, err2 = api.GetUserRating(ctx, user2)
+		if err1 == nil && err2 == nil {
+			var rating1 = ratingChange1[len(ratingChange1)-1].NewRating
+			var rating2 = ratingChange2[len(ratingChange2)-1].NewRating
+			var cota1, cota2 = cota(rating1, rating2)
+			cota1 += 1
+			cota2 += 1
+			if cota1 > 50100 {
+				cota1 = 50100
+			}
+			if cota2 > 50100 {
+				cota2 = 50100
+			}
 
-		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(cota1/100)+"."+strconv.Itoa(cota1/10%10)+strconv.Itoa(cota1%10)+"-"+strconv.Itoa(cota2/100)+"."+strconv.Itoa(cota2/10%10)+strconv.Itoa(cota2%10))
+			_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(cota1/100)+"."+strconv.Itoa(cota1/10%10)+strconv.Itoa(cota1%10)+"-"+strconv.Itoa(cota2/100)+"."+strconv.Itoa(cota2/10%10)+strconv.Itoa(cota2%10))
+		} else {
+			_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid user(s)")
+		}
 	} else if strings.HasPrefix(m.Content, BotPrefix+"bet cf ") {
 		m.Content += " "
 		var user1 = ""
@@ -214,21 +217,25 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 			balance[m.Author.ID] -= sum
 
-			var ratingChange1, _ = api.GetUserRating(ctx, user1)
-			var ratingChange2, _ = api.GetUserRating(ctx, user2)
-			var rating1 = ratingChange1[len(ratingChange1)-1].NewRating
-			var rating2 = ratingChange2[len(ratingChange2)-1].NewRating
-			var cota1, cota2 = cota(rating1, rating2)
-			cota1 += 1
-			if cota1 > 50100 {
-				cota1 = 50100
+			var ratingChange1, err1 = api.GetUserRating(ctx, user1)
+			var ratingChange2, err2 = api.GetUserRating(ctx, user2)
+			if err1 == nil && err2 == nil {
+				var rating1 = ratingChange1[len(ratingChange1)-1].NewRating
+				var rating2 = ratingChange2[len(ratingChange2)-1].NewRating
+				var cota1, _ = cota(rating1, rating2)
+				cota1 += 1
+				if cota1 > 50100 {
+					cota1 = 50100
+				}
+				var win int64 = (sum - sum/20) * int64(cota1) / 100
+
+				bet := Bet{m.Author.ID, user1, user2, win}
+				bets[id].PushBack(bet)
+
+				_, _ = s.ChannelMessageSend(m.ChannelID, "You bet "+strconv.Itoa(int(sum))+" on "+user1+" vs "+user2+" in the Codforces contest: "+strconv.Itoa(int(id))+" with a potentially win of "+strconv.Itoa(int(win)))
+			} else {
+				_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid user(s)")
 			}
-			var win int64 = (sum - sum/20) * int64(cota1) / 100
-
-			bet := Bet{m.Author.ID, user1, user2, win}
-			bets[id].PushBack(bet)
-
-			_, _ = s.ChannelMessageSend(m.ChannelID, "You bet "+strconv.Itoa(int(sum))+" on "+user1+" vs "+user2+" in the Codforces contest: "+strconv.Itoa(int(id))+" with a potentially win of "+strconv.Itoa(int(win)))
 		} else {
 			_, _ = s.ChannelMessageSend(m.ChannelID, "Insufficient funds")
 		}
@@ -246,28 +253,26 @@ func main() {
 
 	Start()
 	fmt.Println("ok")
+	/*
+		const ONE_DAY = 24 * 60 * 60
 
-	const ONE_DAY = 24 * 60 * 60
+		ctx := context.Background()
+		logger := log.New(os.Stderr, "*** ", log.LstdFlags)
+		api, _ := goforces.NewClient(logger)
+			for true {
+				time.Sleep(ONE_DAY)
+				contestList, _ := api.GetContestList(ctx, nil)
+				for key, value := range bets {
+					i := 0
+					for contestList[i].ID != key {
+						i++
+					}
+					if contestList[i].Finished() {
 
-	ctx := context.Background()
-	logger := log.New(os.Stderr, "*** ", log.LstdFlags)
-	api, _ := goforces.NewClient(logger)
-
-	for true {
-		time.Sleep(ONE_DAY)
-		contestList, _ := api.GetContestList(ctx, nil)
-		for key, value := range bets {
-			i := 0
-			for contestList[i].ID != key {
-				i++
-			}
-			if contestList[i].Finished() {
-			
-			}
-		}
-	}
+					}
+				}
+			}*/
 
 	<-make(chan struct{})
 	return
 }
-
