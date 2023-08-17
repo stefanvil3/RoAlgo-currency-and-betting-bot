@@ -162,8 +162,8 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			var rating1 = ratingChange1[len(ratingChange1)-1].NewRating
 			var rating2 = ratingChange2[len(ratingChange2)-1].NewRating
 			var cota1, cota2 = cota(rating1, rating2)
-			cota1 += 1
-			cota2 += 1
+			cota1 = max(101, cota1-5)
+			cota2 = max(101, cota2-5)
 			if cota1 > 50100 {
 				cota1 = 50100
 			}
