@@ -304,7 +304,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 
 		var cota = cota_points(low, high)
-		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(cota/100)+"."+strconv.Itoa(cota/10%10)+strconv.Itoa(cota%10))
+		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(cota/100))+"."+strconv.Itoa(int(cota/10%10))+strconv.Itoa(int(cota%10)))
 	} else if strings.HasPrefix(m.Content, BotPrefix+"event cota standings ") {
 		m.Content += " "
 		var low int64 = 0
@@ -326,7 +326,8 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			high = aux
 		}
 
-		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(cota/100)+"."+strconv.Itoa(cota/10%10)+strconv.Itoa(cota%10))
+		var cota = cota_standings(low, high)
+		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(cota/100))+"."+strconv.Itoa(int(cota/10%10))+strconv.Itoa(int(cota%10)))
 	} else if strings.HasPrefix(m.Content, BotPrefix+"event bet points ") {
 		m.Content += " "
 		var low int64 = 0
