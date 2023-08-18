@@ -303,7 +303,8 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			high = aux
 		}
 
-		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(cota_points(low, high))))
+		var cota = cota_points(low, high)
+		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(cota/100)+"."+strconv.Itoa(cota/10%10)+strconv.Itoa(cota%10))
 	} else if strings.HasPrefix(m.Content, BotPrefix+"event cota standings ") {
 		m.Content += " "
 		var low int64 = 0
@@ -325,7 +326,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			high = aux
 		}
 
-		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(cota_standings(low, high))))
+		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(cota/100)+"."+strconv.Itoa(cota/10%10)+strconv.Itoa(cota%10))
 	} else if strings.HasPrefix(m.Content, BotPrefix+"event bet points ") {
 		m.Content += " "
 		var low int64 = 0
@@ -363,7 +364,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			balance[m.Author.Username] -= sum
 
 			var cota = cota_points(low, high)
-			var win = (sum - sum/10) * cota
+			var win = (sum - sum/10) * cota / 100
 			event_bets_points[player].PushBack(EventBet{m.Author.Username, player, win, low, high})
 
 			_, _ = s.ChannelMessageSend(m.ChannelID, "You bet "+strconv.Itoa(int(sum))+" on "+player+" scoring between "+strconv.Itoa(int(low))+" and"+strconv.Itoa(int(high)))
@@ -407,7 +408,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			balance[m.Author.Username] -= sum
 
 			var cota = cota_points(low, high)
-			var win = (sum - sum/10) * cota
+			var win = (sum - sum/10) * cota / 100
 			event_bets_standings[player].PushBack(EventBet{m.Author.Username, player, win, low, high})
 
 			_, _ = s.ChannelMessageSend(m.ChannelID, "You bet "+strconv.Itoa(int(sum))+" on "+player+" standing between "+strconv.Itoa(int(low))+" and"+strconv.Itoa(int(high)))
