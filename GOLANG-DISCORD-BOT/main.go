@@ -300,7 +300,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if low < high {
 			var aux = low
 			low = high
-			high = low
+			high = aux
 		}
 
 		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(cota_points(low, high))))
@@ -322,7 +322,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if low < high {
 			var aux = low
 			low = high
-			high = low
+			high = aux
 		}
 
 		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(cota_standings(low, high))))
@@ -356,7 +356,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if low < high {
 			var aux = low
 			low = high
-			high = low
+			high = aux
 		}
 
 		if balance[m.Author.Username] >= sum {
@@ -400,7 +400,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if low < high {
 			var aux = low
 			low = high
-			high = low
+			high = aux
 		}
 
 		if balance[m.Author.Username] >= sum {
