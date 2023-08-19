@@ -142,22 +142,38 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Content == BotPrefix+"ping" {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "pong")
 	} else if strings.HasPrefix(m.Content, BotPrefix+"add ") {
-		m.Content += " "
+		m.Content += "  "
 		var user = ""
 		var sum int64 = 0
+		var sign int64 = 1
+		var have_sum = false
 		var i = 5
 		for m.Content[i] != ' ' {
 			user += string(m.Content[i])
 			i++
 		}
-		i++
-		for unicode.IsDigit(rune(m.Content[i])) {
-			sum = sum*10 + int64(m.Content[i]-'0')
-			i++
-		}
 
-		balance[user] += sum
-		_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(sum))+" were added to "+user+"'s balance")
+		if user == "" {
+			_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid command")
+		} else {
+			i++
+			if m.Content[i] == '-' {
+				sign = -1
+				i++
+			}
+			for unicode.IsDigit(rune(m.Content[i])) {
+				sum = sum*10 + int64(m.Content[i]-'0')
+				i++
+				have_sum = true
+			}
+			if !have_sum {
+				_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid command")
+			} else {
+				sum *= sign
+				balance[user] += sum
+				_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(sum))+" were added to "+user+"'s balance")
+			}
+		}
 	} else if m.Content == BotPrefix+"show" {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "Your balance is "+strconv.Itoa(int(balance[m.Author.Username])))
 	} else if strings.HasPrefix(m.Content, BotPrefix+"show ") {
