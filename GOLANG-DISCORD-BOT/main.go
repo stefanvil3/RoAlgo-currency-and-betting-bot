@@ -289,7 +289,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 				_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid user(s)")
 			}
 		} else {
-			_, _ = s.ChannelMessageSend(m.ChannelID, "Insufficient funds")
+			_, _ = s.ChannelMessageSend(m.ChannelID, "Insufficient funds, you have only "+strconv.Itoa(int(balance[m.Author.ID])))
 		}
 	} else if m.Content == BotPrefix+"event start" {
 		event = true
