@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/bwmarrin/discordgo"
 	"github.com/togatoga/goforces"
 	"io/ioutil"
 	"log"
@@ -13,9 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
-
-	"github.com/bwmarrin/discordgo"
 )
 
 var (
@@ -149,6 +147,123 @@ func cota_standings(low int64, high int64) int64 {
 	return ret
 }
 
+func event_betting_start() string {
+	event_betting = true
+	event_rewarded = false
+	return "Event betting started"
+}
+
+func event_betting_stop() string {
+	event_betting = false
+	return "Event betting ended"
+}
+
+func event_cota_points(argv []string) string {
+	var retval = ""
+	var low, err1 = strconv.ParseInt(argv[4], 10, 64)
+	var high, err2 = strconv.ParseInt(argv[5], 10, 64)
+
+	if err1 == nil && err2 == nil {
+		if low < high {
+			var aux = low
+			low = high
+			high = aux
+		}
+
+		var cota = cota_points(low, high)
+		retval = strconv.Itoa(int(cota/100)) + "." + strconv.Itoa(int(cota/10%10)) + strconv.Itoa(int(cota%10))
+	} else {
+		retval = "Invalid command"
+	}
+
+	return retval
+}
+
+func event_cota_standings(argv []string) string {
+	var retval = ""
+	var low, err1 = strconv.ParseInt(argv[4], 10, 64)
+	var high, err2 = strconv.ParseInt(argv[5], 10, 64)
+
+	if err1 != nil || err2 != nil {
+		if low < high {
+			var aux = low
+			low = high
+			high = aux
+		}
+
+		var cota = cota_standings(low, high)
+		retval = strconv.Itoa(int(cota/100)) + "." + strconv.Itoa(int(cota/10%10)) + strconv.Itoa(int(cota%10))
+	} else {
+		retval = "Invalid command"
+	}
+
+	return retval
+}
+
+func event_bet_points(argv []string, user string) string {
+	var retval = ""
+	var low, err1 = strconv.ParseInt(argv[3], 10, 64)
+	var high, err2 = strconv.ParseInt(argv[4], 10, 64)
+	var sum, err3 = strconv.ParseInt(argv[5], 10, 64)
+	var player = argv[6]
+
+	if err1 == nil && err2 == nil && err3 == nil {
+
+		if low < high {
+			var aux = low
+			low = high
+			high = aux
+		}
+
+		if balance[user] >= sum {
+			balance[user] -= sum
+
+			var cota = cota_points(low, high)
+			var win = (sum - COMISION_EVENTS*sum/100) * cota / 100
+			event_bets_points[player].PushBack(EventBet{user, player, win, low, high})
+
+			retval = "You bet " + strconv.Itoa(int(sum)) + " on " + player + " scoring between " + strconv.Itoa(int(low)) + " and" + strconv.Itoa(int(high))
+		} else {
+			retval = "Insufficient funds, you have only " + strconv.Itoa(int(balance[user]))
+		}
+	} else {
+		retval = "Invalid command"
+	}
+
+	return retval
+}
+func event_bet_standings(argv []string, user string) string {
+	var retval = ""
+	var low, err1 = strconv.ParseInt(argv[3], 10, 64)
+	var high, err2 = strconv.ParseInt(argv[4], 10, 64)
+	var sum, err3 = strconv.ParseInt(argv[5], 10, 64)
+	var player = argv[6]
+
+	if err1 == nil && err2 == nil && err3 == nil {
+		if low < high {
+			var aux = low
+			low = high
+			high = aux
+		}
+
+		if balance[user] >= sum {
+			balance[user] -= sum
+
+			var cota = cota_points(low, high)
+			var win = (sum - sum*COMISION_EVENTS/100) * cota / 100
+			event_bets_standings[player].PushBack(EventBet{user, player, win, low, high})
+
+			retval = "You bet " + strconv.Itoa(int(sum)) + " on " + player + " standing between " + strconv.Itoa(int(low)) + " and" + strconv.Itoa(int(high))
+		} else {
+			retval = "Insufficient funds, you have only " + strconv.Itoa(int(balance[user]))
+		}
+	} else {
+		retval = "Invalid command"
+	}
+
+	return retval
+}
+
 func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == BotId {
 		return
@@ -173,7 +288,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	} else if m.Content == BotPrefix+"show" {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "Your balance is "+strconv.Itoa(int(balance[m.Author.Username])))
 	} else if argc == 2 && argv[0] == BotPrefix+"show" {
-]		var user = argv[1]
+		var user = argv[1]
 
 		_, _ = s.ChannelMessageSend(m.ChannelID, user+"'s balance is "+strconv.Itoa(int(balance[user])))
 	} else if m.Content == BotPrefix+"help" {
@@ -201,12 +316,12 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	} else if argc == 6 && argv[0]+" "+argv[1] == BotPrefix+"bet cf" {
 		var user1 = argv[2]
 		var user2 = argv[3]
-		var sum, err1  = strconv.ParseInt(argv[3], 10, 64)
+		var sum, err1 = strconv.ParseInt(argv[3], 10, 64)
 		var id, err2 = strconv.ParseInt(argv[4], 10, 64)
 
-		if err1 != nil || err2 != nil{
+		if err1 != nil || err2 != nil {
 			_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid command")
-		}else{
+		} else {
 			ctx := context.Background()
 			logger := log.New(os.Stderr, "*** ", log.LstdFlags)
 			api, _ := goforces.NewClient(logger)
@@ -259,7 +374,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		var low, err1 = strconv.ParseInt(argv[4], 10, 64)
 		var high, err2 = strconv.ParseInt(argv[5], 10, 64)
 
-		if err1 == nil && err2 == nil{
+		if err1 == nil && err2 == nil {
 			if low < high {
 				var aux = low
 				low = high
@@ -268,23 +383,23 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 			var cota = cota_points(low, high)
 			_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(cota/100))+"."+strconv.Itoa(int(cota/10%10))+strconv.Itoa(int(cota%10)))
-		}else{
+		} else {
 			_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid command")
 		}
 	} else if argc == 5 && argv[0]+" "+argv[1]+" "+argv[3] == BotPrefix+"event cota standings" {
 		var low, err1 = strconv.ParseInt(argv[4], 10, 64)
 		var high, err2 = strconv.ParseInt(argv[5], 10, 64)
 
-		if err1 != nil || err2 != nil{
+		if err1 != nil || err2 != nil {
 			if low < high {
-			var aux = low
-			low = high
-			high = aux
+				var aux = low
+				low = high
+				high = aux
 			}
 
 			var cota = cota_standings(low, high)
 			_, _ = s.ChannelMessageSend(m.ChannelID, strconv.Itoa(int(cota/100))+"."+strconv.Itoa(int(cota/10%10))+strconv.Itoa(int(cota%10)))
-		}else{
+		} else {
 			_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid command")
 		}
 	} else if argc == 7 && argv[0]+" "+argv[1]+" "+argv[2] == BotPrefix+"event bet points" {
@@ -293,7 +408,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		var sum, err3 = strconv.ParseInt(argv[5], 10, 64)
 		var player = argv[6]
 
-		if err1 == nil && err2 == nil && err3 == nil{
+		if err1 == nil && err2 == nil && err3 == nil {
 
 			if low < high {
 				var aux = low
@@ -312,16 +427,16 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			} else {
 				_, _ = s.ChannelMessageSend(m.ChannelID, "Insufficient funds, you have only "+strconv.Itoa(int(balance[m.Author.ID])))
 			}
-		}else{
+		} else {
 			_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid command")
 		}
-	} else if argc == 7 && argv[0]+" "+argv[1]+" "+argv[2] == BotPrefix+"event bet points" {
+	} else if argc == 7 && argv[0]+" "+argv[1]+" "+argv[2] == BotPrefix+"event bet standings" {
 		var low, err1 = strconv.ParseInt(argv[3], 10, 64)
 		var high, err2 = strconv.ParseInt(argv[4], 10, 64)
 		var sum, err3 = strconv.ParseInt(argv[5], 10, 64)
 		var player = argv[6]
 
-		if err1 == nil && err2 == nil && err3 == nil{
+		if err1 == nil && err2 == nil && err3 == nil {
 			if low < high {
 				var aux = low
 				low = high
@@ -339,10 +454,10 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			} else {
 				_, _ = s.ChannelMessageSend(m.ChannelID, "Insufficient funds, you have only "+strconv.Itoa(int(balance[m.Author.ID])))
 			}
-		}else{
+		} else {
 			_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid command")
 		}
-	} else {
+	} else if string(m.Content[0]) == BotPrefix {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "Invalid command")
 	}
 
