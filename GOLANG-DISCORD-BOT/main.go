@@ -147,6 +147,55 @@ func cota_standings(low int64, high int64) int64 {
 	return ret
 }
 
+func bet_cf(argv []string, user string) string {
+	var retval = ""
+	var user1 = argv[2]
+	var user2 = argv[3]
+	var sum, err1 = strconv.ParseInt(argv[3], 10, 64)
+	var id, err2 = strconv.ParseInt(argv[4], 10, 64)
+
+	if err1 != nil || err2 != nil {
+		retval = "Invalid command"
+	} else {
+		ctx := context.Background()
+		logger := log.New(os.Stderr, "*** ", log.LstdFlags)
+		api, _ := goforces.NewClient(logger)
+		contestList, _ := api.GetContestList(ctx, nil)
+		var i = 0
+		var length = len(contestList)
+		for i < length && contestList[i].ID != id && !contestList[i].Finished() {
+			i++
+		}
+
+		if !(contestList[i].ID == id && !contestList[i].Finished()) {
+			retval = "The contest is invalid!"
+		} else if balance[user] >= sum {
+
+			balance[user] -= sum
+
+			var ratingChange1, err1 = api.GetUserRating(ctx, user1)
+			var ratingChange2, err2 = api.GetUserRating(ctx, user2)
+			if err1 == nil && err2 == nil {
+				var rating1 = ratingChange1[len(ratingChange1)-1].NewRating
+				var rating2 = ratingChange2[len(ratingChange2)-1].NewRating
+				var cota1, _ = cota(rating1, rating2)
+
+				var win int64 = (sum - COMISION*sum/100) * int64(cota1) / 100
+
+				bet := Bet{user, user1, user2, win, sum}
+				bets[id].PushBack(bet)
+
+				retval = "You bet " + strconv.Itoa(int(sum)) + " on " + user1 + " vs " + user2 + " in the Codforces contest: " + strconv.Itoa(int(id)) + " with a potentially win of " + strconv.Itoa(int(win))
+			} else {
+				retval = "Invalid user(s)"
+			}
+		} else {
+			retval = "Insufficient funds, you have only " + strconv.Itoa(int(balance[user]))
+		}
+	}
+	return retval
+}
+
 func event_betting_start() string {
 	event_betting = true
 	event_rewarded = false
